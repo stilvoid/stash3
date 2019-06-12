@@ -1,12 +1,5 @@
 #!/bin/bash
 
-file=$1
-name=$2
-
-if [ -z "$file" -o -z "$name" ]; then
-    echo "Usage: stash3 <file name> <clip name>" >&2
-fi
-
 CONFIG_FILE=~/.stash3
 
 if [ ! -e $CONFIG_FILE ]; then
@@ -14,16 +7,51 @@ if [ ! -e $CONFIG_FILE ]; then
     echo
     read -p "Where's the bucket? " bucket
     echo $bucket > $CONFIG_FILE
+
+    if [ -n "$AWS_PROFILE" ]; then
+        echo $AWS_PROFILE >> $CONFIG_FILE
+    fi
 fi
 
-bucket=$(<$CONFIG_FILE)
+bucket=$(head -n 1 $CONFIG_FILE)
 
-type=$(file -b --mime-type $file)
-encoding=$(file -b --mime-encoding $file)
+if [ $(wc -l <$CONFIG_FILE) -eq 2 ]; then
+    export AWS_PROFILE=$(tail -n 1 $CONFIG_FILE)
+fi
 
-aws s3 cp $file s3://$bucket/$name \
-    --acl public-read \
-    --no-guess-mime-type \
-    --content-type $type \
-    --content-encoding $encoding \
-    > /dev/null
+case ${#@} in
+    0)
+        # List everything
+        aws s3api list-objects --bucket $bucket --query Contents[].Key --output text | sort -h
+        ;;
+    2)
+        file=$1
+        name=$2
+
+        if [[ $file =~ ^https?:// ]]; then
+            f=$(mktemp)
+            aws s3 cp $f s3://$bucket/$name \
+                --acl public-read \
+                --website-redirect $file \
+                > /dev/null
+            rm $f
+        elif [ -f $file ]; then
+            aws s3 cp $file s3://$bucket/$name \
+                --acl public-read \
+                --no-guess-mime-type \
+                --content-type $(file -b --mime-type $file) \
+                --content-encoding $(file -b --mime-encoding $file) \
+                > /dev/null
+        else
+            echo "Couldn't figure out what '$file' is" >&2
+            exit 1
+        fi
+
+        ;;
+    *)
+        echo "Usage: stash3 ((<file name | URL>) <clip name>)"
+        echo "  If you supply no arguments, list the contents of your bucket"
+        echo "  If you supply two arguments, store the file in the clip or link to the url"
+        echo
+        ;;
+esac
