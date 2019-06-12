@@ -1,0 +1,29 @@
+#!/bin/bash
+
+file=$1
+name=$2
+
+if [ -z "$file" -o -z "$name" ]; then
+    echo "Usage: stash3 <file name> <clip name>" >&2
+fi
+
+CONFIG_FILE=~/.stash3
+
+if [ ! -e $CONFIG_FILE ]; then
+    echo "Looks like you haven't configured stash3 yet :)"
+    echo
+    read -p "Where's the bucket? " bucket
+    echo $bucket > $CONFIG_FILE
+fi
+
+bucket=$(<$CONFIG_FILE)
+
+type=$(file -b --mime-type $file)
+encoding=$(file -b --mime-encoding $file)
+
+aws s3 cp $file s3://$bucket/$name \
+    --acl public-read \
+    --no-guess-mime-type \
+    --content-type $type \
+    --content-encoding $encoding \
+    > /dev/null
