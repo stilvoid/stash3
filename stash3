@@ -49,9 +49,8 @@ case ${#@} in
 
         ;;
     *)
-        echo "Usage: stash3 ((<file name | URL>) <clip name>)"
+        echo "Usage: stash3 (<file name | URL> <clip name>)"
         echo "  If you supply no arguments, list the contents of your bucket"
         echo "  If you supply two arguments, store the file in the clip or link to the url"
-        echo
         ;;
 esac
