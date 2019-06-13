@@ -47,6 +47,8 @@ case ${#@} in
             exit 1
         fi
 
+        echo http://$bucket/$name
+
         ;;
     *)
         echo "Usage: stash3 (<file name | URL> <clip name>)"
